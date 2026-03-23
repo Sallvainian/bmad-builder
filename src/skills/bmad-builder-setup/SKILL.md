@@ -21,7 +21,10 @@ Both config scripts use an anti-zombie pattern — existing entries for this mod
 
 1. Read `./assets/module.yaml` for module metadata and variable definitions (the `code` field is the module identifier)
 2. Check if `{project-root}/_bmad/config.yaml` exists — if a section matching the module's code is already present, inform the user this is an update
-3. Check for legacy configuration at `{project-root}/_bmad/{module-code}/config.yaml` and `{project-root}/_bmad/core/config.yaml`. If either file exists, inform the user that legacy values will be migrated and the old files removed after setup
+3. Check for per-module configuration at `{project-root}/_bmad/{module-code}/config.yaml` and `{project-root}/_bmad/core/config.yaml`. If either file exists:
+   - If `{project-root}/_bmad/config.yaml` does **not** yet have a section for this module: this is a **fresh install**. Inform the user that installer config was detected and values will be consolidated into the new format.
+   - If `{project-root}/_bmad/config.yaml` **already** has a section for this module: this is a **legacy migration**. Inform the user that legacy per-module config was found alongside existing config, and legacy values will be used as fallback defaults.
+   - In both cases, per-module config files and directories will be cleaned up after setup.
 
 If the user provides arguments (e.g. `accept all defaults`, `--headless`, or inline values like `user name is BMad, I speak Swahili`), map any provided values to config keys, use defaults for the rest, and skip interactive prompting. Still display the full confirmation summary at the end.
 
@@ -48,9 +51,25 @@ Both scripts output JSON to stdout with results. If either exits non-zero, surfa
 
 Run `./scripts/merge-config.py --help` or `scripts/merge-help-csv.py --help` for full usage.
 
+## Create Output Directories
+
+After writing config, create any output directories that were configured. Resolve `{project-root}` to the actual project root and create each path-type value from `config.yaml` that does not yet exist — this includes `output_folder` and any module variable whose value starts with `{project-root}/`. Use `mkdir -p` or equivalent to create the full path.
+
+## Cleanup Legacy Directories
+
+After both merge scripts complete successfully, remove the installer's package directories. Skills and agents in these directories are already installed at `.claude/skills/` — the `_bmad/` directory should only contain config files.
+
+```bash
+python3 ./scripts/cleanup-legacy.py --bmad-dir "{project-root}/_bmad" --module-code {module-code} --also-remove _config --skills-dir "{project-root}/.claude/skills"
+```
+
+The script verifies that every skill in the legacy directories exists at `.claude/skills/` before removing anything. Directories without skills (like `_config/`) are removed directly. If the script exits non-zero, surface the error and stop. Missing directories (already cleaned by a prior run) are not errors — the script is idempotent.
+
+Check `directories_removed` and `files_removed_count` in the JSON output for the confirmation step. Run `./scripts/cleanup-legacy.py --help` for full usage.
+
 ## Confirm
 
-Use the script JSON output to display what was written — config values set (written to `config.yaml` at root for core, module section for module values), user settings written to `config.user.yaml` (`user_keys` in result), help entries added, fresh install vs update. If legacy files were deleted, mention the migration. Then display the `module_greeting` from `assets/module.yaml` to the user.
+Use the script JSON output to display what was written — config values set (written to `config.yaml` at root for core, module section for module values), user settings written to `config.user.yaml` (`user_keys` in result), help entries added, fresh install vs update. If legacy files were deleted, mention the migration. If legacy directories were removed, report the count and list (e.g. "Cleaned up 106 installer package files from bmb/, core/, _config/ — skills are installed at .claude/skills/"). Then display the `module_greeting` from `assets/module.yaml` to the user.
 
 ## Outcome
 

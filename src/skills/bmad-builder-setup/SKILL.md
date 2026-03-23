@@ -53,7 +53,7 @@ Run `./scripts/merge-config.py --help` or `./scripts/merge-help-csv.py --help` f
 
 ## Create Output Directories
 
-After writing config, create any output directories that were configured. Resolve `{project-root}` to the actual project root and create each path-type value from `config.yaml` that does not yet exist — this includes `output_folder` and any module variable whose value starts with `{project-root}/`. Use `mkdir -p` or equivalent to create the full path.
+After writing config, create any output directories that were configured. For filesystem operations only (such as creating directories), resolve the `{project-root}` token to the actual project root and create each path-type value from `config.yaml` that does not yet exist — this includes `output_folder` and any module variable whose value starts with `{project-root}/`. The paths stored in the config files must continue to use the literal `{project-root}` token; only the directories on disk should use the resolved paths. Use `mkdir -p` or equivalent to create the full path.
 
 ## Cleanup Legacy Directories
 
